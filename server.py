@@ -10,7 +10,7 @@ import json
 import urllib.parse
 from extractor import parse_statement_pdf, to_csv
 
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 def load_dotenv():

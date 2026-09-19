@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: statement-extractor
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
