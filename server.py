@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Web Server for StatementFlow Extractor with Anthropic Claude AI Support.
-Provides endpoints for AI statement extraction, API key verification, and CSV generation.
+Production FastAPI & Uvicorn Web Server for StatementFlow Extractor.
+Optimized for local execution and cloud deployment on Render, Fly.io, or Railway.
 """
-import http.server
-import socketserver
 import os
-import json
-import urllib.parse
+from typing import Optional
+from fastapi import FastAPI, File, UploadFile, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from extractor import parse_statement_pdf, to_csv
 
-PORT = int(os.environ.get('PORT', 8080))
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 def load_dotenv():
@@ -23,154 +23,114 @@ def load_dotenv():
                     k, v = line.split('=', 1)
                     k = k.strip()
                     v = v.strip().strip('"').strip("'")
-                    if k and v:
+                    if k and v and k not in os.environ:
                         os.environ[k] = v
 
 load_dotenv()
 
-class StatementHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=DIRECTORY, **kwargs)
+app = FastAPI(title="StatementFlow Extractor API")
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self._set_cors_headers()
-        self.end_headers()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    def do_GET(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        if parsed_url.path == '/api/status':
-            env_key = os.environ.get('ANTHROPIC_API_KEY')
-            has_key = bool(env_key and env_key.strip().startswith('sk-ant-'))
-            self._send_json({
-                'has_server_key': has_key,
-                'default_model': 'claude-haiku-4-5-20251001',
-                'models': [
-                    {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5 (Fast & High Accuracy)'},
-                    {'id': 'claude-sonnet-4-5-20250929', 'name': 'Claude Sonnet 4.5 (Advanced Reasoning)'},
-                    {'id': 'claude-opus-4-5-20251101', 'name': 'Claude Opus 4.5'}
-                ]
-            })
-        else:
-            super().do_GET()
+@app.get("/healthz")
+def health_check():
+    """Endpoint for Render health checks"""
+    return {"status": "ok", "service": "statement-extractor"}
 
-    def do_POST(self):
-        parsed_url = urllib.parse.urlparse(self.path)
+@app.get("/api/status")
+def get_status():
+    env_key = os.environ.get('ANTHROPIC_API_KEY')
+    has_key = bool(env_key and env_key.strip().startswith('sk-ant-'))
+    return {
+        'has_server_key': has_key,
+        'default_model': 'claude-haiku-4-5-20251001',
+        'models': [
+            {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5 (Fast & High Accuracy)'},
+            {'id': 'claude-sonnet-4-5-20250929', 'name': 'Claude Sonnet 4.5 (Advanced Reasoning)'},
+            {'id': 'claude-opus-4-5-20251101', 'name': 'Claude Opus 4.5'}
+        ]
+    }
 
-        if parsed_url.path == '/api/test-key':
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                body = self.rfile.read(content_length).decode('utf-8')
-                data = json.loads(body) if body else {}
-                api_key = data.get('api_key') or self.headers.get('X-Anthropic-Api-Key') or os.environ.get('ANTHROPIC_API_KEY')
+@app.post("/api/test-key")
+async def test_key(request: Request, x_anthropic_api_key: Optional[str] = Header(None)):
+    try:
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+        api_key = body.get('api_key') or x_anthropic_api_key or os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key or not api_key.strip().startswith('sk-ant-'):
+            raise HTTPException(status_code=400, detail="Invalid key format. Anthropic API keys start with sk-ant-")
 
-                if not api_key or not api_key.strip().startswith('sk-ant-'):
-                    self._send_json({'success': False, 'error': 'Invalid key format. Anthropic API keys start with sk-ant-'}, 400)
-                    return
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key.strip())
+        client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=10,
+            messages=[{'role': 'user', 'content': 'hi'}]
+        )
+        return {'success': True, 'message': 'Anthropic API key is active and connected successfully!'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Key verification failed: {str(e)}")
 
-                # Test connection using lightweight ping
-                import anthropic
-                client = anthropic.Anthropic(api_key=api_key.strip())
-                test_res = client.messages.create(
-                    model='claude-haiku-4-5-20251001',
-                    max_tokens=10,
-                    messages=[{'role': 'user', 'content': 'hi'}]
-                )
-                self._send_json({'success': True, 'message': 'Anthropic API key is active and connected successfully!'})
-            except Exception as e:
-                self._send_json({'success': False, 'error': f'Key verification failed: {str(e)}'}, 400)
-            return
+@app.post("/api/parse")
+async def parse_endpoint(
+    file: UploadFile = File(...),
+    x_anthropic_api_key: Optional[str] = Header(None),
+    x_anthropic_model: Optional[str] = Header(None)
+):
+    try:
+        pdf_bytes = await file.read()
+        if not pdf_bytes:
+            raise HTTPException(status_code=400, detail="No file content received")
 
-        elif parsed_url.path == '/api/parse':
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                if content_length == 0:
-                    self._send_json({'error': 'No file content received'}, 400)
-                    return
+        if not pdf_bytes.startswith(b'%PDF'):
+            pdf_idx = pdf_bytes.find(b'%PDF')
+            if pdf_idx != -1:
+                pdf_bytes = pdf_bytes[pdf_idx:]
+            else:
+                raise HTTPException(status_code=400, detail="Uploaded file does not appear to be a valid PDF format.")
 
-                # Check for Anthropic API key in header or environment
-                api_key = self.headers.get('X-Anthropic-Api-Key') or os.environ.get('ANTHROPIC_API_KEY')
-                model = self.headers.get('X-Anthropic-Model') or 'claude-haiku-4-5-20251001'
+        api_key = x_anthropic_api_key or os.environ.get('ANTHROPIC_API_KEY')
+        model = x_anthropic_model or 'claude-haiku-4-5-20251001'
 
-                body = self.rfile.read(content_length)
-                content_type = self.headers.get('Content-Type', '')
+        result = parse_statement_pdf(pdf_bytes, api_key=api_key, model=model)
+        transactions = result['transactions']
+        validation = result['validation']
+        csv_output = to_csv(transactions)
 
-                pdf_data = b''
-                if 'multipart/form-data' in content_type:
-                    boundary = None
-                    for part in content_type.split(';'):
-                        part = part.strip()
-                        if part.startswith('boundary='):
-                            boundary = part.split('=', 1)[1].strip('"').encode('latin1')
-                            break
-                    if boundary:
-                        chunks = body.split(b'--' + boundary)
-                        for chunk in chunks:
-                            if b'filename=' in chunk and b'\r\n\r\n' in chunk:
-                                header_part, file_part = chunk.split(b'\r\n\r\n', 1)
-                                if file_part.endswith(b'\r\n'):
-                                    file_part = file_part[:-2]
-                                pdf_data = file_part
-                                break
-                    if not pdf_data:
-                        pdf_data = body
-                else:
-                    pdf_data = body
+        return {
+            'success': True,
+            'engine': validation.get('engine', 'Unknown'),
+            'count': len(transactions),
+            'overall_confidence': validation.get('overall_confidence', 90),
+            'needs_review_count': validation.get('needs_review_count', 0),
+            'transactions': transactions,
+            'validation': validation,
+            'metadata': result.get('metadata', {}),
+            'csv': csv_output
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
-                if not pdf_data.startswith(b'%PDF'):
-                    pdf_idx = pdf_data.find(b'%PDF')
-                    if pdf_idx != -1:
-                        pdf_data = pdf_data[pdf_idx:]
-                    else:
-                        self._send_json({
-                            'success': False,
-                            'error': 'Uploaded file does not appear to be a valid PDF format.'
-                        }, 400)
-                        return
+# Serve static web frontend
+app.mount("/", StaticFiles(directory=DIRECTORY, html=True), name="static")
 
-                result = parse_statement_pdf(pdf_data, api_key=api_key, model=model)
-                transactions = result['transactions']
-                validation = result['validation']
-                csv_output = to_csv(transactions)
-
-                response_data = {
-                    'success': True,
-                    'engine': validation.get('engine', 'Unknown'),
-                    'count': len(transactions),
-                    'overall_confidence': validation.get('overall_confidence', 90),
-                    'needs_review_count': validation.get('needs_review_count', 0),
-                    'transactions': transactions,
-                    'validation': validation,
-                    'metadata': result.get('metadata', {}),
-                    'csv': csv_output
-                }
-                self._send_json(response_data)
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                self._send_json({'success': False, 'error': f'Extraction failed: {str(e)}'}, 500)
-        else:
-            self.send_error(404, "Endpoint not found")
-
-    def _set_cors_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Anthropic-Api-Key, X-Anthropic-Model, Authorization')
-
-    def _send_json(self, data, status=200):
-        response_bytes = json.dumps(data).encode('utf-8')
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(response_bytes)))
-        self._set_cors_headers()
-        self.end_headers()
-        self.wfile.write(response_bytes)
-
-def run(port=PORT):
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", port), StatementHandler) as httpd:
-        print(f"Statement Extractor Server running at http://localhost:{port}")
-        httpd.serve_forever()
-
-if __name__ == '__main__':
-    run()
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    print(f"Statement Extractor Server starting on http://0.0.0.0:{port}", flush=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
