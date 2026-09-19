@@ -1,8 +1,7 @@
 """
-WSGI compatibility entrypoint for Render.
+Compatibility entrypoint for Render.
+Exports the FastAPI ASGI app for Uvicorn / Gunicorn.
 """
-from a2wsgi import ASGIMiddleware
-from server import app as asgi_app
+from server import app, application
 
-application = ASGIMiddleware(asgi_app)
-app = application
+__all__ = ["app", "application"]

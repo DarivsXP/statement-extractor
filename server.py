@@ -29,6 +29,7 @@ def load_dotenv():
 load_dotenv()
 
 app = FastAPI(title="StatementFlow Extractor API")
+application = app
 
 app.add_middleware(
     CORSMiddleware,

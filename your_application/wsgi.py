@@ -1,8 +1,6 @@
 """
-WSGI compatibility entrypoint for Render.
+Compatibility entrypoint for Render default start command (gunicorn your_application.wsgi:app).
 """
-from a2wsgi import ASGIMiddleware
-from server import app as asgi_app
+from server import app, application
 
-application = ASGIMiddleware(asgi_app)
-app = application
+__all__ = ["app", "application"]
