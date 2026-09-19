@@ -856,12 +856,51 @@ function recalcStats() {
   }
 }
 
+function parseDateForSort(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const s = dateStr.trim();
+  if (!s) return 0;
+
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10);
+    let year = parseInt(dmyMatch[3], 10);
+    if (year < 100) year += 2000;
+    return new Date(year, month - 1, day).getTime() || 0;
+  }
+
+  // YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10);
+    const day = parseInt(ymdMatch[3], 10);
+    return new Date(year, month - 1, day).getTime() || 0;
+  }
+
+  const parsed = Date.parse(s);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+function sortByDate(txs) {
+  return txs
+    .map((tx, idx) => ({ tx, idx, time: parseDateForSort(tx.date) }))
+    .sort((a, b) => {
+      if (a.time !== b.time) return a.time - b.time;
+      return a.idx - b.idx;
+    })
+    .map(item => item.tx);
+}
+
 function generateCsv(txs, includeConfidence) {
+  const sortedTxs = sortByDate(txs);
   if (includeConfidence) {
     const rows = [
       ['Date', 'Description', 'Debit', 'Credit', 'Confidence', 'Needs Review', 'Review Reason']
     ];
-    txs.forEach(t => {
+    sortedTxs.forEach(t => {
       rows.push([
         `"${(t.date || '').replace(/"/g, '""')}"`,
         `"${(t.description || '').replace(/"/g, '""')}"`,
@@ -877,7 +916,7 @@ function generateCsv(txs, includeConfidence) {
     const rows = [
       ['Date', 'Description', 'Debit', 'Credit']
     ];
-    txs.forEach(t => {
+    sortedTxs.forEach(t => {
       rows.push([
         `"${(t.date || '').replace(/"/g, '""')}"`,
         `"${(t.description || '').replace(/"/g, '""')}"`,

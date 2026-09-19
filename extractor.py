@@ -633,18 +633,40 @@ def parse_statement_pdf(pdf_source, api_key=None, model="claude-3-7-sonnet-20250
         return parse_statement_pdf_heuristic(pdf_bytes)
 
 
+def _parse_date_for_sort(date_str):
+    if not date_str or not isinstance(date_str, str):
+        return (9999, 12, 31)
+    s = date_str.strip()
+    # DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$', s)
+    if m:
+        day = int(m.group(1))
+        month = int(m.group(2))
+        year = int(m.group(3))
+        if year < 100:
+            year += 2000
+        return (year, month, day)
+    # YYYY-MM-DD or YYYY/MM/DD
+    m = re.match(r'^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$', s)
+    if m:
+        return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    return (9999, 12, 31)
+
+
 def to_csv(transactions, include_confidence=False):
     """
-    Exports transactions to standard CSV.
+    Exports transactions to standard CSV sorted chronologically by date.
     Standard: Date, Description, Debit, Credit (No Balance).
     Optional audit columns: Confidence, Needs Review, Review Reason.
     """
     output = io.StringIO()
     writer = csv.writer(output)
     
+    sorted_txs = sorted(transactions, key=lambda t: _parse_date_for_sort(t.get('date', '')))
+
     if include_confidence:
         writer.writerow(['Date', 'Description', 'Debit', 'Credit', 'Confidence', 'Needs Review', 'Review Reason'])
-        for row in transactions:
+        for row in sorted_txs:
             writer.writerow([
                 row.get('date', ''),
                 row.get('description', ''),
@@ -656,7 +678,7 @@ def to_csv(transactions, include_confidence=False):
             ])
     else:
         writer.writerow(['Date', 'Description', 'Debit', 'Credit'])
-        for row in transactions:
+        for row in sorted_txs:
             writer.writerow([
                 row.get('date', ''),
                 row.get('description', ''),
