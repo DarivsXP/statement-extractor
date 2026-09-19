@@ -345,10 +345,10 @@ RESPOND ONLY with a single valid JSON object in this exact schema (no markdown p
             validation_messages.append(f"Credits match statement summary: ${calc_credits:.2f}")
 
     if not validation_messages:
-        validation_messages.append(f"Extracted {len(clean_txs)} transactions with Claude AI.")
+        validation_messages.append(f"Extracted {len(clean_txs)} transactions.")
 
     validation_report = {
-        'engine': f'Anthropic Claude ({chosen_model})',
+        'engine': f'{chosen_model}',
         'status': 'reconciled' if reconciled and (expected_deb is not None or expected_cred is not None) else ('warning' if not reconciled else 'verified'),
         'reconciled': reconciled,
         'overall_confidence': avg_conf,
@@ -586,7 +586,7 @@ def parse_statement_pdf_heuristic(pdf_source):
     avg_conf = round(total_conf / len(results)) if results else 0
 
     validation_report = {
-        'engine': 'Rule-Based Regex (Add Anthropic Key for Claude AI)',
+        'engine': 'Rule-Based Parser',
         'status': 'reconciled' if reconciled and (expected_deb is not None or expected_cred is not None) else ('warning' if not reconciled else 'verified'),
         'reconciled': reconciled,
         'overall_confidence': avg_conf,

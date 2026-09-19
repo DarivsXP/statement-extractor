@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StatementFlow - AI Statement Extractor with Claude & Review Workflow</title>
+  <title>StatementFlow - Bank Statement Extractor</title>
   <link rel="stylesheet" href="style.css">
   <script src="pdf.min.js"></script>
 </head>
@@ -11,20 +11,20 @@
 
   <header>
     <div class="logo-area">
-      <div class="logo-badge">dext*</div>
+      <div class="logo-badge">SF</div>
       <div>
-        <div class="logo-title">StatementFlow <span class="ai-pill">AI Powered</span></div>
+        <div class="logo-title">StatementFlow</div>
         <div class="logo-subtitle">Bank & Credit Card Statement Extractor</div>
       </div>
     </div>
     <div class="header-actions">
-      <div id="engineStatusBadge" class="engine-badge warning" title="Click AI Settings to configure Claude API Key">
+      <div id="engineStatusBadge" class="engine-badge warning" title="Configure API Key in Settings">
         <span class="status-indicator"></span>
-        <span id="engineBadgeText">Regex Mode (Add Anthropic Key)</span>
+        <span id="engineBadgeText">Local Mode</span>
       </div>
       <button id="openSettingsBtn" class="btn btn-outline btn-sm">
         <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        AI Settings
+        Settings
       </button>
     </div>
   </header>
@@ -42,7 +42,7 @@
           <div class="drop-title">Drag & Drop your Statement PDF here</div>
           <div class="drop-desc">Upload Visa, Mastercard, Amex, or any Bank statement PDF</div>
           <div class="engine-hint" id="engineHint">
-            <span>⚡ Anthropic Claude active for smart multi-column document reasoning</span>
+            <span>Upload PDF to extract transactions</span>
           </div>
           <input type="file" id="fileInput" accept="application/pdf" style="display: none;">
         </div>
@@ -58,7 +58,6 @@
 
     <!-- Error / Info Banner -->
     <div id="errorBanner" class="alert alert-danger hidden">
-      <div class="alert-icon">⚠️</div>
       <div class="alert-content">
         <div id="errorTitle" class="alert-title">Extraction Error</div>
         <div id="errorMessage"></div>
@@ -68,19 +67,19 @@
     <!-- Loading Indicator -->
     <div id="loadingIndicator" class="loading-overlay hidden">
       <div class="spinner"></div>
-      <div id="loadingText" class="loading-text">Extracting statement with Anthropic Claude AI...</div>
-      <div class="loading-subtext">Auditing table structure, dates, amounts, and computing confidence scores</div>
+      <div id="loadingText" class="loading-text">Extracting statement transactions...</div>
+      <div class="loading-subtext">Parsing tables, dates, and amounts</div>
     </div>
 
     <!-- Review & Export Section -->
     <section id="reviewSection" class="review-card hidden">
       <!-- Validation Banner -->
       <div id="validationBanner" class="alert alert-success">
-        <div id="validationIcon" class="alert-icon">✓</div>
+        <div id="validationIcon" class="alert-icon"></div>
         <div class="alert-content">
           <div class="validation-header-row">
             <div id="validationTitle" class="alert-title">Reconciliation Verified</div>
-            <span id="extractionEngineTag" class="engine-tag">Anthropic Claude</span>
+            <span id="extractionEngineTag" class="engine-tag">Parser</span>
           </div>
           <ul id="validationList" class="alert-messages"></ul>
         </div>
@@ -94,22 +93,22 @@
           <span class="stat-sub">Valid date & amount</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">AI Confidence Score</span>
+          <span class="stat-label">Confidence Score</span>
           <span id="statConfidence" class="stat-val confidence-high">98%</span>
-          <span id="statConfidenceSub" class="stat-sub">Overall Statement Accuracy</span>
+          <span id="statConfidenceSub" class="stat-sub">Overall Accuracy</span>
         </div>
         <div class="stat-box stat-clickable" id="statReviewBox" title="Click to view flagged items">
           <span class="stat-label">Requires Review</span>
           <span id="statNeedsReview" class="stat-val warning">0</span>
-          <span class="stat-sub">Ambiguous items flagged</span>
+          <span class="stat-sub">Flagged items</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Total Debits (Purchases)</span>
+          <span class="stat-label">Total Debits</span>
           <span id="statDebits" class="stat-val debit">$0.00</span>
           <span id="statExpectedDebits" class="stat-sub">Statement: $0.00</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Total Credits (Payments)</span>
+          <span class="stat-label">Total Credits</span>
           <span id="statCredits" class="stat-val credit">$0.00</span>
           <span id="statExpectedCredits" class="stat-sub">Statement: $0.00</span>
         </div>
@@ -124,7 +123,7 @@
               All Transactions (<span id="countAll">0</span>)
             </button>
             <button id="tabNeedsReview" class="filter-tab review-flag-tab">
-              ⚠️ Needs Review (<span id="countReview">0</span>)
+              Needs Review (<span id="countReview">0</span>)
             </button>
           </div>
           <div class="search-box">
@@ -140,8 +139,8 @@
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Export Standard CSV
             </button>
-            <button id="exportAuditCsvBtn" class="btn btn-outline btn-sm" title="Export CSV with AI Confidence and Review Reason columns">
-              Export Audit CSV
+            <button id="exportAuditCsvBtn" class="btn btn-outline btn-sm" title="Export CSV with Confidence and Review Reason columns">
+              Export Detailed CSV
             </button>
           </div>
         </div>
@@ -149,9 +148,8 @@
 
       <!-- Review Alert Notice for flagged items -->
       <div id="reviewNoticeBanner" class="review-notice-banner hidden">
-        <div class="review-notice-icon">🔍</div>
         <div class="review-notice-text">
-          <strong>Human Review Recommended:</strong> <span id="reviewNoticeCount">0</span> transaction(s) have potential date, debit/credit, or layout ambiguity. Review each highlighted row below and click <strong>Approve</strong> once confirmed.
+          <strong>Review Recommended:</strong> <span id="reviewNoticeCount">0</span> transaction(s) require review. Verify highlighted rows below and click <strong>Approve</strong>.
         </div>
         <button id="dismissAllReviewBtn" class="btn btn-sm btn-outline-warning">Approve All</button>
       </div>
@@ -166,7 +164,7 @@
               <th>Description / Narrative</th>
               <th style="width: 120px; text-align: right;">Debit ($)</th>
               <th style="width: 120px; text-align: right;">Credit ($)</th>
-              <th style="width: 190px; text-align: center;">AI Confidence & Status</th>
+              <th style="width: 170px; text-align: center;">Confidence & Status</th>
               <th style="width: 50px; text-align: center;"></th>
             </tr>
           </thead>
@@ -178,22 +176,21 @@
 
       <div class="table-footer">
         <div class="notice-pill">
-          ✓ Standard CSV Columns: Date, Description, Debit, Credit (Excludes Balance)
+          Standard CSV Columns: Date, Description, Debit, Credit (Excludes Balance)
         </div>
         <button id="clearBtn" class="btn btn-secondary btn-sm">Process Another Statement</button>
       </div>
     </section>
   </main>
 
-  <!-- AI Settings Modal -->
+  <!-- Settings Modal -->
   <div id="settingsModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
-          <div class="modal-icon">⚡</div>
           <div>
-            <h3 class="modal-title">Anthropic Claude AI Settings</h3>
-            <p class="modal-subtitle">Connect your Anthropic API key to enable visual statement understanding</p>
+            <h3 class="modal-title">Settings</h3>
+            <p class="modal-subtitle">Configure Anthropic API key and model selection</p>
           </div>
         </div>
         <button id="closeSettingsBtn" class="btn-close">&times;</button>
@@ -204,16 +201,16 @@
           <label class="settings-label" for="apiKeyInput">Anthropic API Key</label>
           <div class="input-password-wrapper">
             <input type="password" id="apiKeyInput" class="settings-input" placeholder="sk-ant-api03-...">
-            <button id="toggleKeyVisibilityBtn" type="button" class="btn-toggle-vis" title="Show/Hide Key">👁️</button>
+            <button id="toggleKeyVisibilityBtn" type="button" class="btn-toggle-vis" title="Show/Hide Key">Show</button>
           </div>
-          <span class="settings-help">Keys start with <code>sk-ant-</code>. Your key is stored securely in your browser session.</span>
+          <span class="settings-help">Keys start with <code>sk-ant-</code>. Your key is stored locally in your browser.</span>
         </div>
 
         <div class="settings-group">
-          <label class="settings-label" for="modelSelect">Claude Model</label>
+          <label class="settings-label" for="modelSelect">Model</label>
           <select id="modelSelect" class="settings-select">
-            <option value="claude-haiku-4-5-20251001" selected>Claude Haiku 4.5 (Fast & High Accuracy)</option>
-            <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5 (Advanced Reasoning)</option>
+            <option value="claude-haiku-4-5-20251001" selected>Claude Haiku 4.5</option>
+            <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
             <option value="claude-opus-4-5-20251101">Claude Opus 4.5</option>
           </select>
         </div>
@@ -232,7 +229,7 @@
   </div>
 
   <footer>
-    StatementFlow &bull; AI-Powered Bank Statement CSV Extraction with Anthropic Claude &bull; Built with pair programming
+    StatementFlow &bull; Bank Statement CSV Extractor
   </footer>
 
   <script src="app.js"></script>

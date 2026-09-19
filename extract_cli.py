@@ -34,14 +34,14 @@ def main():
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(csv_data)
-        print(f"✓ Engine:        {validation.get('engine', 'Unknown')}")
-        print(f"✓ Extracted {len(transactions)} transactions to {args.output}")
-        print(f"✓ AI Confidence: {validation.get('overall_confidence', 0)}%")
-        print(f"✓ Needs Review:  {validation.get('needs_review_count', 0)} transactions")
-        print(f"✓ Total Debits:  ${validation.get('total_debits', '0.00')}")
-        print(f"✓ Total Credits: ${validation.get('total_credits', '0.00')}")
+        print(f"Engine:        {validation.get('engine', 'Unknown')}")
+        print(f"Extracted {len(transactions)} transactions to {args.output}")
+        print(f"Confidence:    {validation.get('overall_confidence', 0)}%")
+        print(f"Needs Review:  {validation.get('needs_review_count', 0)} transactions")
+        print(f"Total Debits:  ${validation.get('total_debits', '0.00')}")
+        print(f"Total Credits: ${validation.get('total_credits', '0.00')}")
         if validation.get('status') == 'reconciled':
-            print("✓ Reconciliation: MATCHES STATEMENT SUMMARY TOTALS (100% Verified)")
+            print("Reconciliation: Matches statement summary totals")
         for msg in validation.get('messages', []):
             print(f"  - {msg}")
     else:

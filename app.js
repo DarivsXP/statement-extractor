@@ -97,15 +97,15 @@ function updateEngineBadge(key, model) {
   if (hasKey) {
     engineStatusBadge.className = 'engine-badge active';
     const modelShort = model.includes('opus') ? 'Claude Opus 4.5' : (model.includes('sonnet') ? 'Claude Sonnet 4.5' : 'Claude Haiku 4.5');
-    engineBadgeText.innerText = `⚡ ${modelShort} Active`;
+    engineBadgeText.innerText = `${modelShort} Active`;
     if (engineHint) {
-      engineHint.innerHTML = `<span>⚡ <strong>${modelShort}</strong> active for visual table reasoning & confidence scoring</span>`;
+      engineHint.innerHTML = `<span><strong>${modelShort}</strong> active</span>`;
     }
   } else {
     engineStatusBadge.className = 'engine-badge warning';
-    engineBadgeText.innerText = 'Regex Mode (Add Claude Key)';
+    engineBadgeText.innerText = 'Local Mode';
     if (engineHint) {
-      engineHint.innerHTML = `<span>⚠️ Add your Anthropic API Key in Settings for 100% accurate AI extraction on any statement</span>`;
+      engineHint.innerHTML = `<span>Upload PDF to extract transactions</span>`;
     }
   }
 }
@@ -134,10 +134,10 @@ engineStatusBadge.addEventListener('click', () => {
 toggleKeyVisibilityBtn.addEventListener('click', () => {
   if (apiKeyInput.type === 'password') {
     apiKeyInput.type = 'text';
-    toggleKeyVisibilityBtn.innerText = '🔒';
+    toggleKeyVisibilityBtn.innerText = 'Hide';
   } else {
     apiKeyInput.type = 'password';
-    toggleKeyVisibilityBtn.innerText = '👁️';
+    toggleKeyVisibilityBtn.innerText = 'Show';
   }
 });
 
@@ -159,7 +159,7 @@ removeKeyBtn.addEventListener('click', () => {
   localStorage.removeItem(STORAGE_KEY_ANTHROPIC);
   updateEngineBadge('', modelSelect.value);
   keyTestResult.className = 'key-test-result';
-  keyTestResult.innerText = 'Anthropic key cleared.';
+  keyTestResult.innerText = 'API key cleared.';
 });
 
 testKeyBtn.addEventListener('click', async () => {
@@ -183,7 +183,7 @@ testKeyBtn.addEventListener('click', async () => {
     const data = await res.json();
     if (data.success) {
       keyTestResult.className = 'key-test-result success';
-      keyTestResult.innerText = `✓ Connected! Anthropic API key is valid and ready.`;
+      keyTestResult.innerText = `Connected: API key is valid.`;
     } else {
       keyTestResult.className = 'key-test-result error';
       keyTestResult.innerText = `Connection error: ${data.error || 'Invalid API Key'}`;
@@ -344,11 +344,7 @@ async function handleFileUpload(file) {
   const apiKey = localStorage.getItem(STORAGE_KEY_ANTHROPIC) || '';
   const model = localStorage.getItem(STORAGE_KEY_MODEL) || 'claude-3-7-sonnet-20250219';
 
-  if (apiKey) {
-    showLoading(true, `Extracting statement with Anthropic Claude AI...`);
-  } else {
-    showLoading(true, `Extracting statement transactions with layout parser...`);
-  }
+  showLoading(true, `Extracting statement transactions...`);
 
   // 1. Send to Backend API
   try {
@@ -651,7 +647,7 @@ async function extractWithPdfJs(pdf) {
   return {
     transactions: resultRows,
     validation: {
-      engine: 'Client Rule-Based Parser (Add Anthropic Key for Claude AI)',
+      engine: 'Local Parser',
       status: reconciled && (expDebits !== null || expCredits !== null) ? 'reconciled' : (reconciled ? 'verified' : 'warning'),
       reconciled,
       overall_confidence: avgConf,
@@ -681,20 +677,20 @@ function renderValidation() {
 
   if (currentValidation.status === 'reconciled') {
     validationBanner.classList.add('alert-success');
-    validationIcon.innerText = '✓';
-    validationTitle.innerText = 'Reconciliation Verified (100% Match)';
+    validationIcon.innerText = '';
+    validationTitle.innerText = 'Reconciliation Verified';
   } else if (currentValidation.status === 'warning') {
     validationBanner.classList.add('alert-warning');
-    validationIcon.innerText = '⚠️';
-    validationTitle.innerText = 'Reconciliation Warning (Review Advised)';
+    validationIcon.innerText = '';
+    validationTitle.innerText = 'Review Recommended';
   } else {
     validationBanner.classList.add('alert-success');
-    validationIcon.innerText = '✓';
+    validationIcon.innerText = '';
     validationTitle.innerText = 'Statement Extraction Complete';
   }
 
   if (extractionEngineTag) {
-    extractionEngineTag.innerText = currentValidation.engine || 'AI Extracted';
+    extractionEngineTag.innerText = currentValidation.engine || 'Parser';
   }
 
   validationList.innerHTML = '';
@@ -769,11 +765,11 @@ function renderTableOnly() {
           <span class="confidence-pill ${confLevel}" title="${conf}% confidence">${conf}%</span>
           ${isNeedsReview ? `
             <span class="review-badge" title="${escapeHtml(tx.review_reason || 'Flagged for review')}">
-              ⚠️ Review
+              Review
             </span>
-            <button class="btn-approve-sm" data-approve-index="${index}" title="Approve row and clear review flag">✓ Approve</button>
+            <button class="btn-approve-sm" data-approve-index="${index}" title="Approve row and clear review flag">Approve</button>
           ` : `
-            <span style="color: #10b981; font-size: 0.75rem; font-weight: 600;">✓ Verified</span>
+            <span style="color: #10b981; font-size: 0.75rem; font-weight: 600;">Verified</span>
           `}
         </div>
       </td>

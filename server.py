@@ -51,8 +51,8 @@ def get_status():
         'has_server_key': has_key,
         'default_model': 'claude-haiku-4-5-20251001',
         'models': [
-            {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5 (Fast & High Accuracy)'},
-            {'id': 'claude-sonnet-4-5-20250929', 'name': 'Claude Sonnet 4.5 (Advanced Reasoning)'},
+            {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'},
+            {'id': 'claude-sonnet-4-5-20250929', 'name': 'Claude Sonnet 4.5'},
             {'id': 'claude-opus-4-5-20251101', 'name': 'Claude Opus 4.5'}
         ]
     }
@@ -76,7 +76,7 @@ async def test_key(request: Request, x_anthropic_api_key: Optional[str] = Header
             max_tokens=10,
             messages=[{'role': 'user', 'content': 'hi'}]
         )
-        return {'success': True, 'message': 'Anthropic API key is active and connected successfully!'}
+        return {'success': True, 'message': 'API key connected successfully.'}
     except HTTPException:
         raise
     except Exception as e:

@@ -834,11 +834,23 @@ tr.row-needs-review:hover td {
 .btn-toggle-vis {
   position: absolute;
   right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: #64748b;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-toggle-vis:hover {
+  color: var(--text-main);
+  background: #f1f5f9;
 }
 
 .settings-help {
